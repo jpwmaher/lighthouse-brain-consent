@@ -56,12 +56,28 @@ const SUPABASE_URL = 'https://sriocnxovzwpaginktds.supabase.co'
 const ANON_KEY = 'sb_publishable_qGP5uXfUHWXABb3jg1_fMw_82rcA4pQ'
 const supabase = createClient(SUPABASE_URL, ANON_KEY, { auth: { flowType:'pkce', detectSessionInUrl:true, persistSession:true, autoRefreshToken:true }})
 const card = document.getElementById('card')
-const authorizationId = new URLSearchParams(location.search).get('authorization_id')
-const consentUrl = location.origin + location.pathname + '?authorization_id=' + encodeURIComponent(authorizationId || '')
+const qp = new URLSearchParams(location.search)
+const authorizationId = qp.get('authorization_id')
+const consentBase = location.origin + location.pathname + '?authorization_id=' + encodeURIComponent(authorizationId || '')
 
 function esc(s){const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML}
-function showError(msg){ card.innerHTML = '<p class="eyebrow">Couldn\'t connect</p><h1>Something went wrong</h1><p class="err">'+esc(msg)+'</p><p class="muted">You can close this window and try again.</p>' }
 function showStatus(msg){ card.innerHTML = '<div class="spinner"></div><p class="muted">'+esc(msg)+'</p>' }
+function showError(msg){ card.innerHTML = '<p class="eyebrow">Couldn\'t connect</p><h1>Something went wrong</h1><p class="err">'+esc(msg)+'</p><p class="muted">You can close this window and try again from the app.</p>' }
+function showRetry(msg){
+  card.innerHTML = '<p class="eyebrow">Let\'s try that again</p><h1>Sign in to connect</h1>'+
+    (msg?'<p class="muted">'+esc(msg)+'</p>':'')+
+    '<button class="btn btn-primary" id="retry">Sign in with Google</button>'
+  document.getElementById('retry').onclick = ()=> reauth('&retried=1')
+}
+
+// (Re)start Google sign-in, returning to this same consent request afterwards.
+// Clearing any stale local session first avoids getting stuck with a dead one.
+async function reauth(extra){
+  showStatus('Taking you to Google sign-in...')
+  try { await supabase.auth.signOut({ scope:'local' }) } catch(_) {}
+  const { error } = await supabase.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: consentBase + (extra||'') }})
+  if(error) showError(error.message)
+}
 
 function renderConsent(d){
   const scopes = (d.scope||'').split(' ').filter(Boolean)
@@ -90,19 +106,32 @@ function renderConsent(d){
 }
 
 async function main(){
+  // Surface any error handed back in the URL (e.g. a provider error).
+  if(qp.get('error')){ showRetry(qp.get('error_description')||qp.get('error')); return }
   if(!authorizationId){ showError('Missing authorization request. Please start again from the app.'); return }
-  if(!supabase.auth.oauth){ showError('This server needs a newer Supabase client.'); return }
-  let { data:{ session } } = await supabase.auth.getSession()
-  if(!session){
-    showStatus('Taking you to Google sign-in...')
-    const { error } = await supabase.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: consentUrl }})
-    if(error) showError(error.message)
-    return
+  if(!supabase.auth || !supabase.auth.oauth){ showError('This server needs a newer Supabase client.'); return }
+  const retried = qp.get('retried') === '1'
+
+  // Validate the session against the server (this refreshes an expired token,
+  // and returns no user if the session is truly gone — unlike getSession(),
+  // which can hand back a stale local session that then fails downstream).
+  let user = null
+  try { ({ data: { user } } = await supabase.auth.getUser()) } catch(_) { user = null }
+  if(!user){
+    if(retried){ showRetry('Your sign-in didn\'t stick. Try once more?'); return }
+    return reauth('&retried=1')
   }
+
   showStatus('Loading...')
-  const { data, error } = await supabase.auth.oauth.getAuthorizationDetails(authorizationId)
-  if(error){ showError(error.message); return }
-  if(!('authorization_id' in data)){ location.href = data.redirect_url; return }
+  let data = null, error = null
+  try { ({ data, error } = await supabase.auth.oauth.getAuthorizationDetails(authorizationId)) }
+  catch(e){ error = e }
+  if(error){
+    // Almost always a stale session — clear it and re-authenticate once.
+    if(retried){ showRetry(error.message || String(error)); return }
+    return reauth('&retried=1')
+  }
+  if(!('authorization_id' in data)){ location.href = data.redirect_url; return } // already consented
   renderConsent(data)
 }
 main().catch(e=>showError(e&&e.message?e.message:String(e)))
