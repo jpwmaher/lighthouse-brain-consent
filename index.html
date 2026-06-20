@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Connect - Lighthouse Second Brain</title>
+<!--
+  OAuth consent screen for the Lighthouse Second Brain.
+  Hosted on GitHub Pages because Supabase Edge Functions force text/plain on the
+  shared *.supabase.co domain (anti-phishing). Static page: talks to Supabase
+  client-side with the public anon key. Configured as the OAuth server's
+  authorization path (site_url + path resolves here).
+-->
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;500;600&display=swap');
+  :root{--dark-blue:#284d5e;--black:#343536;--white:#fff;--off-white:#f5f5f5;--orange:#e68b14;--teal:#0c7489;--grey:#8a9aa3;--light-grey:#dfe4e7}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:Poppins,system-ui,sans-serif;font-weight:300;color:var(--black);background:var(--off-white);min-height:100vh;display:flex;flex-direction:column}
+  header{background:var(--dark-blue);padding:18px 24px;display:flex;align-items:center;gap:12px}
+  header .word{color:#fff;font-weight:600;font-size:20px;letter-spacing:-.02em}
+  header .sub{color:#9fc1d0;font-weight:500;font-size:11px;text-transform:uppercase;letter-spacing:.14em;margin-left:6px}
+  main{flex:1;display:flex;align-items:center;justify-content:center;padding:32px 20px}
+  .card{background:#fff;border:1px solid var(--light-grey);border-radius:16px;max-width:440px;width:100%;padding:36px;box-shadow:0 8px 30px rgba(40,77,94,.08)}
+  .eyebrow{color:var(--teal);font-weight:500;text-transform:uppercase;letter-spacing:.14em;font-size:12px;margin:0 0 8px}
+  h1{color:var(--dark-blue);font-weight:600;font-size:24px;letter-spacing:-.02em;margin:0 0 14px;line-height:1.2}
+  p{line-height:1.6;margin:0 0 14px}
+  .who{color:var(--grey);font-size:14px}
+  .perms{background:var(--off-white);border-radius:10px;padding:14px 16px;margin:18px 0}
+  .perms strong{font-weight:500}
+  .perms ul{margin:8px 0 0;padding-left:18px}
+  .perms li{margin:4px 0}
+  .btn{display:block;width:100%;text-align:center;border-radius:999px;padding:13px 20px;font-family:inherit;font-weight:500;font-size:15px;cursor:pointer;border:1.5px solid transparent;margin-top:12px}
+  .btn-primary{background:var(--orange);color:#fff;border-color:var(--orange)}
+  .btn-primary:hover{filter:brightness(.96)}
+  .btn-secondary{background:transparent;color:var(--dark-blue);border-color:var(--dark-blue)}
+  .btn[disabled]{opacity:.5;cursor:default}
+  .muted{color:var(--grey);font-size:13px;text-align:center;margin-top:18px}
+  .spinner{width:30px;height:30px;border:3px solid var(--light-grey);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite;margin:8px auto}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .err{color:#b3261e}
+</style>
+</head>
+<body>
+  <header>
+    <svg viewBox="0 0 311 269" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="height:34px;width:auto"><g stroke="none" stroke-width="1" fill="none" fill-rule="evenodd"><g transform="translate(8.5,5)"><g stroke-linecap="square" transform="translate(0,3.5)" stroke="#FFF" stroke-width="13"><line x1="0" y1="90" x2="90" y2="62"/><line x1="0" y1="0" x2="90" y2="27"/></g><g stroke-linecap="square" transform="translate(204,3.5)" stroke="#FFF" stroke-width="13"><line x1="0" y1="90" x2="90" y2="62" transform="translate(45,76) scale(-1,1) translate(-45,-76)"/><line x1="0" y1="0" x2="90" y2="27" transform="translate(45,13.5) scale(-1,1) translate(-45,-13.5)"/></g><polygon fill="#FFF" points="111.5 264 97.5 264 122.5 0 176.5 0 196.5 264 182.5 264 164.5 14 134.5 14"/><g transform="translate(114.36,68.2)" fill="#FFF" stroke="#FFF" stroke-linecap="square" stroke-width="13"><line x1="3.14" y1="77.8" x2="63.14" y2="94.8" transform="translate(33.14,86.3) rotate(-1) translate(-33.14,-86.3)"/><line x1="0.14" y1="117.8" x2="60.14" y2="134.8" transform="translate(30.14,126.3) rotate(-1) translate(-30.14,-126.3)"/><line x1="7.58" y1="38.32" x2="62.01" y2="54.28" transform="translate(34.79,46.3) rotate(-1) translate(-34.79,-46.3)"/><line x1="11.72" y1="1.15" x2="55.91" y2="10.15" transform="translate(33.81,5.65) rotate(3) translate(-33.81,-5.65)"/><line x1="2.15" y1="157.77" x2="65.99" y2="175.36"/></g></g></g></svg>
+    <span class="word">Lighthouse</span><span class="sub">Second Brain</span>
+  </header>
+  <main><div class="card" id="card">
+    <div class="spinner"></div>
+    <p class="muted" id="status">Checking your sign-in...</p>
+  </div></main>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+const SUPABASE_URL = 'https://sriocnxovzwpaginktds.supabase.co'
+const ANON_KEY = 'sb_publishable_qGP5uXfUHWXABb3jg1_fMw_82rcA4pQ'
+const supabase = createClient(SUPABASE_URL, ANON_KEY, { auth: { flowType:'pkce', detectSessionInUrl:true, persistSession:true, autoRefreshToken:true }})
+const card = document.getElementById('card')
+const authorizationId = new URLSearchParams(location.search).get('authorization_id')
+const consentUrl = location.origin + location.pathname + '?authorization_id=' + encodeURIComponent(authorizationId || '')
+
+function esc(s){const d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML}
+function showError(msg){ card.innerHTML = '<p class="eyebrow">Couldn\'t connect</p><h1>Something went wrong</h1><p class="err">'+esc(msg)+'</p><p class="muted">You can close this window and try again.</p>' }
+function showStatus(msg){ card.innerHTML = '<div class="spinner"></div><p class="muted">'+esc(msg)+'</p>' }
+
+function renderConsent(d){
+  const scopes = (d.scope||'').split(' ').filter(Boolean)
+  const name = d.client && d.client.name ? d.client.name : 'An application'
+  card.innerHTML =
+    '<p class="eyebrow">Authorise access</p>'+
+    '<h1>'+esc(name)+' wants to connect</h1>'+
+    '<p>to your Lighthouse Second Brain, signed in as <span class="who">'+esc(d.user&&d.user.email)+'</span>.</p>'+
+    '<div class="perms"><strong>It will be able to</strong><ul>'+
+      '<li>Read and write your shared knowledge base, under your own access rules</li>'+
+      (scopes.length?('<li>Access: '+scopes.map(esc).join(', ')+'</li>'):'')+
+    '</ul></div>'+
+    '<button class="btn btn-primary" id="approve">Allow access</button>'+
+    '<button class="btn btn-secondary" id="deny">Cancel</button>'+
+    '<p class="muted">You can disconnect at any time.</p>'
+  document.getElementById('approve').onclick = async (e)=>{
+    e.target.disabled=true; showStatus('Connecting...')
+    const { error } = await supabase.auth.oauth.approveAuthorization(authorizationId)
+    if(error) showError(error.message)
+  }
+  document.getElementById('deny').onclick = async ()=>{
+    showStatus('Cancelling...')
+    const { error } = await supabase.auth.oauth.denyAuthorization(authorizationId)
+    if(error) showError(error.message)
+  }
+}
+
+async function main(){
+  if(!authorizationId){ showError('Missing authorization request. Please start again from the app.'); return }
+  if(!supabase.auth.oauth){ showError('This server needs a newer Supabase client.'); return }
+  let { data:{ session } } = await supabase.auth.getSession()
+  if(!session){
+    showStatus('Taking you to Google sign-in...')
+    const { error } = await supabase.auth.signInWithOAuth({ provider:'google', options:{ redirectTo: consentUrl }})
+    if(error) showError(error.message)
+    return
+  }
+  showStatus('Loading...')
+  const { data, error } = await supabase.auth.oauth.getAuthorizationDetails(authorizationId)
+  if(error){ showError(error.message); return }
+  if(!('authorization_id' in data)){ location.href = data.redirect_url; return }
+  renderConsent(data)
+}
+main().catch(e=>showError(e&&e.message?e.message:String(e)))
+</script>
+</body>
+</html>
